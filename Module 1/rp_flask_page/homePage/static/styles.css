@@ -1,0 +1,206 @@
+/* Reusable design values. Change these once to update the whole color theme. */
+:root {
+  /* Main sunflower yellow used for prominent accents. */
+  --yellow: #f4c430;
+  /* Softer yellow used for navigation buttons. */
+  --yellow-light: #fff1a8;
+  /* Very pale yellow used in the page background. */
+  --yellow-pale: #fffbea;
+  /* Nearly black text color with a warm yellow-brown tint. */
+  --ink: #292515;
+  /* Pure white, available for components that need it. */
+  --white: #ffffff;
+  /* A reusable soft shadow that helps the content card stand out. */
+  --shadow: 0 18px 45px rgba(91, 71, 5, 0.14);
+}
+
+/* Include padding and borders inside every element's declared width and height. */
+* {
+  box-sizing: border-box;
+}
+
+/* Ensure the page can always fill at least the full browser height. */
+html {
+  min-height: 100%;
+}
+
+/* Set the overall page layout, typography, colors, and layered background. */
+body {
+  /* Keep the page at least as tall as the visible browser window. */
+  min-height: 100vh;
+  /* Remove the browser's default outer margin. */
+  margin: 0;
+  /* Add responsive space around the page content. */
+  padding: clamp(2rem, 6vw, 5rem) 1rem;
+  color: var(--ink);
+  /* Use Trebuchet when available, with common fallback fonts. */
+  font-family: "Trebuchet MS", Arial, sans-serif;
+  font-size: 1.125rem;
+  /* Add comfortable vertical space between lines of text. */
+  line-height: 1.7;
+  text-align: center;
+  /* Layer a yellow glow over a subtle diagonal cream gradient. */
+  background:
+    radial-gradient(circle at 15% 15%, rgba(244, 196, 48, 0.32), transparent 28rem),
+    linear-gradient(135deg, var(--yellow-pale), #fff7cf);
+}
+
+/* Style only the main h1 that is a direct child of the body. */
+body > h1 {
+  /* Make the heading box only as wide as its text. */
+  width: fit-content;
+  margin: 0 auto 1.25rem;
+  padding: 0.2em 0.75em;
+  /* Scale the heading with the screen while keeping sensible limits. */
+  font-size: clamp(2.4rem, 8vw, 4.75rem);
+  line-height: 1.1;
+  /* Pull the letters slightly closer together. */
+  letter-spacing: -0.05em;
+  /* Create a yellow marker-style highlight beneath the text. */
+  background: linear-gradient(transparent 60%, var(--yellow) 60%);
+}
+
+/* Constrain and position the navigation area. */
+nav {
+  max-width: 720px;
+  margin: 0 auto 2rem;
+}
+
+/* Arrange navigation items in a centered, wrapping row. */
+nav ul {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.65rem;
+  /* Remove the list's browser-default spacing and bullets. */
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Make each navigation link look like a pill-shaped button. */
+nav a {
+  display: block;
+  padding: 0.55rem 1rem;
+  color: var(--ink);
+  font-weight: 700;
+  text-decoration: none;
+  background-color: var(--yellow-light);
+  /* Reserve border space so adding a border on hover does not shift the layout. */
+  border: 2px solid transparent;
+  border-radius: 999px;
+  /* Smooth the hover movement and color changes. */
+  transition: transform 160ms ease, background-color 160ms ease, border-color 160ms ease;
+}
+
+/* Keep visited navigation links the same color as unvisited links. */
+nav a:visited {
+  color: var(--ink);
+}
+
+/* Give mouse and keyboard users clear feedback on a navigation link. */
+nav a:hover,
+nav a:focus-visible {
+  background-color: var(--yellow);
+  border-color: var(--ink);
+  /* Lift the button upward by two pixels. */
+  transform: translateY(-2px);
+}
+
+/* Turn the page-specific content into a centered card. */
+section {
+  /* Use 720px when possible, but never overflow a narrow screen. */
+  width: min(720px, 100%);
+  margin: 0 auto;
+  /* Clip the yellow header background to the card's rounded corners. */
+  overflow: hidden;
+  background-color: rgba(255, 255, 255, 0.88);
+  border: 1px solid rgba(91, 71, 5, 0.12);
+  border-radius: 24px;
+  box-shadow: var(--shadow);
+}
+
+/* Create the solid yellow title band at the top of the card. */
+section header {
+  padding: 1.4rem 2rem;
+  background-color: var(--yellow);
+}
+
+/* Style each page's title inside the yellow band. */
+h2 {
+  margin: 0;
+  /* Responsively resize the title without making it too small or large. */
+  font-size: clamp(1.65rem, 5vw, 2.35rem);
+  line-height: 1.2;
+}
+
+/* Limit line length and add responsive space around the main content. */
+main {
+  max-width: 60ch;
+  margin: 0 auto;
+  padding: clamp(1.75rem, 5vw, 3rem);
+}
+
+/* Remove the default paragraph margin inside the content card. */
+main p {
+  margin: 0;
+}
+
+/* Style regular content links with a readable dark-gold color. */
+main a,
+main a:visited {
+  color: #725600;
+  font-weight: 700;
+  /* Make the underline slightly thicker and move it away from the letters. */
+  text-decoration-thickness: 0.12em;
+  text-underline-offset: 0.18em;
+}
+
+/* Darken and thicken content links when hovered or keyboard-focused. */
+main a:hover,
+main a:focus-visible {
+  color: #3f3000;
+  text-decoration-thickness: 0.2em;
+}
+
+/* Show a strong outline when any link receives visible keyboard focus. */
+a:focus-visible {
+  outline: 3px solid var(--ink);
+  outline-offset: 3px;
+}
+
+/* Use the theme colors when the visitor selects text. */
+::selection {
+  color: var(--ink);
+  background: var(--yellow);
+}
+
+/* Adjust the layout for phones and other screens 480px wide or narrower. */
+@media (max-width: 480px) {
+  body {
+    padding-top: 2rem;
+    font-size: 1rem;
+  }
+
+  /* Stack navigation items vertically on small screens. */
+  nav ul {
+    flex-direction: column;
+  }
+
+  /* Make each mobile navigation button fill the available width. */
+  nav a {
+    width: 100%;
+  }
+
+  /* Use slightly smaller card corners so they suit the compact layout. */
+  section {
+    border-radius: 18px;
+  }
+}
+
+/* Respect visitors who have asked their device to minimize animation. */
+@media (prefers-reduced-motion: reduce) {
+  nav a {
+    transition: none;
+  }
+}
