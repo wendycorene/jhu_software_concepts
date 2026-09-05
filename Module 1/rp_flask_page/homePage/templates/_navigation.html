@@ -1,7 +1,16 @@
 <nav>
   <ul>
-    <li><a href="{{ url_for('pages.home') }}">Home</a></li>
-    <li><a href="{{ url_for('pages.about') }}">Contact Information</a></li>
-    <li><a href="{{ url_for('pages.projects') }}">Projects</a></li>
+    <li>
+      <a href="{{ url_for('pages.home') }}"
+         {% if request.endpoint == 'pages.home' %}class="active" aria-current="page"{% endif %}>About</a>
+    </li>
+    <li>
+      <a href="{{ url_for('pages.about') }}"
+         {% if request.endpoint == 'pages.about' %}class="active" aria-current="page"{% endif %}>Contact Info</a>
+    </li>
+    <li>
+      <a href="{{ url_for('pages.projects') }}"
+         {% if request.endpoint == 'pages.projects' %}class="active" aria-current="page"{% endif %}>Projects</a>
+    </li>
   </ul>
 </nav>

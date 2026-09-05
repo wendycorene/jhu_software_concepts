@@ -2,11 +2,38 @@
 {% extends 'base.html' %}
 
 {% block header %}
-  <h2>{% block title %}Home{% endblock title %}</h2>
+  <h2>{% block title %}About{% endblock title %}</h2>
 {% endblock header %}
 
 {% block content %}
-  <p>
-    Learn more about this project by visiting the <a href="{{ url_for('pages.about') }}">About page</a>.
-  </p>
+  <div class="intro">
+    <div class="intro-text">
+      <h2>Wendy Eloe</h2>
+      <h3>Business Systems Manager</h3>
+      <p>Wendy Eloe is the Business Systems Manager at United Fiber/United Electric Cooperative where most of her work falls under "Other Duties As Assigned."  She is a proud cat mom of 2 and
+        you can pry her love of the oxford comma and double spaces after a period from her cold, dead, and elder millenial hands.
+      </p>
+    </div>
+
+    <img
+      class="intro-image"
+      src="{{ url_for('static', filename='images/me.jpg') }}"
+      alt="Photo of myself"
+    >
+  </div>
+
+  <div class="intro cats-intro">
+    <div class="intro-text">
+      <h2>BBQ Frendo & Lady Chirpington</h2>
+      <h3>The Real Management Team</h3>
+      <p>BBQ Frendo is loud, proud, orange from the streets and has never had the brain cell.  
+        Lady Chirpington loves being in the shower and eating her own vomit, but usually not at the same time.</p>
+    </div>
+
+    <img
+      class="intro-image"
+      src="{{ url_for('static', filename='images/cats.jpg') }}"
+      alt="Wendy's cats"
+    >
+  </div>
 {% endblock content %}
