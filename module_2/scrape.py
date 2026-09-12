@@ -5,7 +5,7 @@ from pathlib import Path
 
 http = urllib3.PoolManager()
 
-#I ran this in chunks and put the url from the last run here
+#I ran this in chunks and put the url from the last run here manually.
 url = "https://www.thegradcafe.com/survey?cursor=eyJjcmVhdGVkX2F0IjoiMjAyNi0wMi0xMSAyMTo1ODowNyIsImFkbWl0aWQiOjk5OTk0NywiX3BvaW50c1RvTmV4dEl0ZW1zIjp0cnVlfQ"
 
 def _save_page(count, response_data):
@@ -21,7 +21,7 @@ def _extract_next_url(html):
     page_data = json.loads(data_page)
     return page_data["props"]["results"]["links"]["next"]
 
-def scrape_data():
+def scrape_data(url):
     # Loop through the saved chunk range and continue following pagination
     for count in range(1521, 1621):
         response = http.request("GET", url)
@@ -35,3 +35,5 @@ def scrape_data():
 
         print(count)
         print(url)
+
+scrape_data(url)

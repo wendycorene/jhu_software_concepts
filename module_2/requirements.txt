@@ -1,0 +1,5 @@
+beautifulsoup4
+urllib3
+
+# Dependencies for the local LLM application
+-r llm_hosting/requirements.txt
