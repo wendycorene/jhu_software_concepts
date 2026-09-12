@@ -27,7 +27,7 @@ degree program + university names. It appends two new fields to each row:
 ## CLI mode (no server)
 
 ```bash
-python app.py --file cleaned_applicant_data.json --stdout > full_out.jsonl
+python app.py --file ../applicant_data.json --out full_out.json
 ```
 
 ## Config (env vars)
@@ -46,3 +46,8 @@ export MODEL_FILE=tinyllama-1.1b-chat-v1.0.Q3_K_M.gguf
 ## Notes
 - Strict JSON prompting + a rules-first fallback keep tiny models on task.
 - Extend the few-shots and the fallback patterns in `app.py` for higher accuracy on your dataset.
+
+CLI output defaults to a UTF-8 JSON array with no named wrapper. Use an
+output filename ending in `.jsonl` or `.ndjson` for incremental JSON Lines.
+`--append` is supported only for those formats. Prefer `--out` over shell
+redirection to preserve accents on Windows.
