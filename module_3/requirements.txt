@@ -1,0 +1,7 @@
+﻿psycopg[binary]>=3.2,<4
+SQLAlchemy>=2.0,<3
+Flask>=3.1,<4
+beautifulsoup4>=4.12,<5
+urllib3>=2.2,<3
+reportlab>=4,<6
+# Optional: playwright for screenshots; llm_hosting/requirements.txt for local LLM.
