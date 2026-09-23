@@ -1,0 +1,18 @@
+﻿<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Grad Cafe | Admissions analysis</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}"></head>
+<body><main>
+<header><div><p class="eyebrow">MODULE 3 / DATABASE QUERIES</p><h1>Admissions, in perspective.</h1>
+<p>Exploring self-reported graduate application results from Grad Cafe.</p></div>
+<div class="actions"><form id="pull-form" action="{{ url_for('pull_data') }}" method="post"><button id="pull-button" {% if running %}disabled{% endif %}>Pull Data</button></form>
+<form id="update-form" action="{{ url_for('update_analysis') }}" method="post"><button class="secondary">Update Analysis</button></form></div></header>
+<section id="pull-notice" class="notice" data-state="{{ 'running' if running else state }}" aria-live="polite"><span id="spinner" class="spinner" aria-hidden="true" {% if not running %}hidden{% endif %}></span><strong id="pull-message">{{ 'New data is currently being retrieved.' if running else status }}</strong>
+<p>Pull Data checks up to 10 recent survey pages and adds new entries. This may take some time. Update Analysis refreshes the results currently in the database.</p></section>
+<p id="refresh-status" role="status">{% if refreshed %}Analysis last refreshed: <time datetime="{{ refreshed }}">{{ refreshed }}</time>{% else %}Analysis has not loaded successfully.{% endif %}</p>
+{% if error %}<p class="error" role="alert">{{ error }}</p>{% endif %}
+<div class="grid">{% for card in cards %}<article><p class="eyebrow">QUESTION {{ '%02d'|format(card.number) }}{% if card.number > 9 %} / ORIGINAL ANALYSIS{% endif %}</p>
+<h2>{{ card.question }}</h2><p class="answer">{{ card.answer }}</p></article>{% endfor %}</div>
+<footer>These are submission-level statistics, not population admission rates. Missing metrics are excluded separately from each average. N/A means no eligible observations. New pulls do not generate LLM fields, so standardized-field counts may lag original-field counts.</footer>
+</main><script src="{{ url_for('static', filename='status.js') }}" defer></script></body></html>

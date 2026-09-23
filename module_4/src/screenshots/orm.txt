@@ -1,0 +1,33 @@
+Q1. How many entries are for Fall 2026?
+Answer: 31915
+
+Q2. Among entries with a nationality classification, what percentage are international?
+Answer: 45.70%
+
+Q3. What are the average GPA, GRE Quantitative, GRE Verbal, and GRE Analytical Writing scores?
+Answer: Average GPA: 3.77; Average GRE Quantitative: 165.79; Average GRE Verbal: 160.73; Average GRE Analytical Writing: 4.35
+
+Q4. What is the average GPA of American applicants for Fall 2026?
+Answer: 3.79
+
+Q5. What percentage of Fall 2025 entries are acceptances?
+Answer: 47.23%
+
+Q6. What is the average GPA of accepted applicants for Fall 2026?
+Answer: 3.76
+
+Q7. How many entries are for a Computer Science master's degree at Johns Hopkins University (original fields)?
+Answer: 8
+
+Q8. How many Fall 2026 acceptances are for a Computer Science PhD at Georgetown, MIT, Stanford, or Carnegie Mellon (original fields)?
+Answer: 30
+
+Q9. How does the Question 8 count change when using LLM-generated university and program fields?
+Answer: Original-field count: 30; LLM-field count: 30; Difference: +0
+
+Q10. Which five programs have the highest average GRE Quantitative scores (at least 10 valid scores)?
+Answer: finance: 168.39 (23 scores); economics: 167.91 (400 scores); mechanical engineering: 167.39 (23 scores); chemistry: 167.39 (18 scores); statistics: 165.65 (17 scores)
+
+Q11. Which five universities have the most reported rejections across all terms?
+Answer: stanford university: 528 rejections; yale university: 451 rejections; princeton university: 413 rejections; university of california, berkeley: 395 rejections; massachusetts institute of technology: 373 rejections
+
