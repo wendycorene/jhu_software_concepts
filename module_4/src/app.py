@@ -75,6 +75,7 @@ def create_app(manager=None):
     app = Flask(__name__)
     manager = manager or PullManager()
 
+    @app.get('/analysis')
     @app.get('/')
     def index():
         error, cards, running = None, [], False
