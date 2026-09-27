@@ -4,3 +4,5 @@ __pycache__/
 .coverage
 .coverage.*
 htmlcov/
+docs/_build/html/.doctrees/
+docs/_build/html/.buildinfo

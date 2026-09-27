@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>query_data &#8212; Grad Cafe Analytics  documentation</title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="../_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="../_static/alabaster.css?v=27fed22d" />
+    <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+    <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for query_data</h1><div class="highlight"><pre>
+<span></span><span class="sd">"""All eleven analyses expressed as executable PostgreSQL SELECT statements."""</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">config</span><span class="w"> </span><span class="kn">import</span> <span class="n">connect</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">presentation</span><span class="w"> </span><span class="kn">import</span> <span class="n">print_results</span>
+
+<span class="n">FALL</span> <span class="o">=</span> <span class="s2">"lower(trim(term)) = 'fall 2026'"</span>
+<span class="n">ACCEPTED</span> <span class="o">=</span> <span class="s2">"lower(trim(status)) IN ('accepted', 'acceptance', 'admitted')"</span>
+<span class="n">PHD</span> <span class="o">=</span> <span class="s2">"lower(trim(degree)) IN ('phd', 'ph.d.', 'ph.d', 'doctor of philosophy')"</span>
+<span class="n">MASTERS</span> <span class="o">=</span> <span class="s2">"lower(trim(degree)) IN ('masters', 'master', 'master''s', 'ms', 'm.s.', 'msc', 'm.sc.', 'meng', 'm.eng.')"</span>
+<span class="c1"># PostgreSQL word boundaries prevent MIT from matching an unrelated word.</span>
+<span class="n">UNIVERSITIES</span> <span class="o">=</span> <span class="sa">r</span><span class="s1">'(georgetown|massachusetts institute of technology|\mmit\M|stanford|carnegie mellon|\mcmu\M)'</span>
+<span class="n">CS</span> <span class="o">=</span> <span class="sa">r</span><span class="s1">'computer\s+science'</span>
+<span class="n">Q8_FILTER</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">FALL</span><span class="si">}</span><span class="s2"> AND </span><span class="si">{</span><span class="n">ACCEPTED</span><span class="si">}</span><span class="s2"> AND </span><span class="si">{</span><span class="n">PHD</span><span class="si">}</span><span class="s2"> AND program ~* '</span><span class="si">{</span><span class="n">CS</span><span class="si">}</span><span class="s2">' AND program ~* '</span><span class="si">{</span><span class="n">UNIVERSITIES</span><span class="si">}</span><span class="s2">'"</span>
+<span class="n">Q9_FILTER</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">FALL</span><span class="si">}</span><span class="s2"> AND </span><span class="si">{</span><span class="n">ACCEPTED</span><span class="si">}</span><span class="s2"> AND </span><span class="si">{</span><span class="n">PHD</span><span class="si">}</span><span class="s2"> AND llm_generated_program ~* '</span><span class="si">{</span><span class="n">CS</span><span class="si">}</span><span class="s2">' AND llm_generated_university ~* '</span><span class="si">{</span><span class="n">UNIVERSITIES</span><span class="si">}</span><span class="s2">'"</span>
+<span class="n">QUERIES</span> <span class="o">=</span> <span class="p">{</span>
+<span class="mi">1</span><span class="p">:</span> <span class="sa">f</span><span class="s1">'SELECT COUNT(*) FROM applicants WHERE </span><span class="si">{</span><span class="n">FALL</span><span class="si">}</span><span class="s1">'</span><span class="p">,</span>
+<span class="mi">2</span><span class="p">:</span> <span class="s2">"""SELECT 100.0 * COUNT(*) FILTER (WHERE lower(trim(us_or_international)) = 'international')</span>
+<span class="s2"> / NULLIF(COUNT(NULLIF(trim(us_or_international), '')), 0) FROM applicants"""</span><span class="p">,</span>
+<span class="mi">3</span><span class="p">:</span> <span class="s1">'SELECT AVG(gpa), AVG(gre), AVG(gre_v), AVG(gre_aw) FROM applicants'</span><span class="p">,</span>
+<span class="mi">4</span><span class="p">:</span> <span class="sa">f</span><span class="s2">"SELECT AVG(gpa) FROM applicants WHERE </span><span class="si">{</span><span class="n">FALL</span><span class="si">}</span><span class="s2"> AND lower(trim(us_or_international)) = 'american'"</span><span class="p">,</span>
+<span class="mi">5</span><span class="p">:</span> <span class="sa">f</span><span class="s2">"SELECT 100.0 * COUNT(*) FILTER (WHERE </span><span class="si">{</span><span class="n">ACCEPTED</span><span class="si">}</span><span class="s2">) / NULLIF(COUNT(*), 0) FROM applicants WHERE lower(trim(term)) = 'fall 2025'"</span><span class="p">,</span>
+<span class="mi">6</span><span class="p">:</span> <span class="sa">f</span><span class="s1">'SELECT AVG(gpa) FROM applicants WHERE </span><span class="si">{</span><span class="n">FALL</span><span class="si">}</span><span class="s1"> AND </span><span class="si">{</span><span class="n">ACCEPTED</span><span class="si">}</span><span class="s1">'</span><span class="p">,</span>
+<span class="mi">7</span><span class="p">:</span> <span class="sa">rf</span><span class="s2">"SELECT COUNT(*) FROM applicants WHERE program ~* '(johns hopkins|\mjhu\M)' AND program ~* '</span><span class="si">{</span><span class="n">CS</span><span class="si">}</span><span class="s2">' AND </span><span class="si">{</span><span class="n">MASTERS</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span>
+<span class="mi">8</span><span class="p">:</span> <span class="sa">f</span><span class="s1">'SELECT COUNT(*) FROM applicants WHERE </span><span class="si">{</span><span class="n">Q8_FILTER</span><span class="si">}</span><span class="s1">'</span><span class="p">,</span>
+<span class="mi">9</span><span class="p">:</span> <span class="sa">f</span><span class="s1">'SELECT COUNT(*) FROM applicants WHERE </span><span class="si">{</span><span class="n">Q9_FILTER</span><span class="si">}</span><span class="s1">'</span><span class="p">,</span>
+<span class="c1"># Group across all terms; break ties alphabetically for a consistent top five.</span>
+<span class="mi">10</span><span class="p">:</span> <span class="s2">"""SELECT lower(trim(llm_generated_program)) AS program,</span>
+<span class="s2"> AVG(gre) AS average_gre, COUNT(gre) AS score_count</span>
+<span class="s2"> FROM applicants</span>
+<span class="s2"> WHERE gre BETWEEN 130 AND 170</span>
+<span class="s2"> AND lower(trim(llm_generated_program)) NOT IN ('', 'unknown', 'n/a')</span>
+<span class="s2"> GROUP BY lower(trim(llm_generated_program))</span>
+<span class="s2"> HAVING COUNT(gre) &gt;= 10</span>
+<span class="s2"> ORDER BY average_gre DESC, program ASC LIMIT 5"""</span><span class="p">,</span>
+<span class="mi">11</span><span class="p">:</span> <span class="s2">"""SELECT lower(trim(llm_generated_university)) AS university,</span>
+<span class="s2"> COUNT(*) AS rejection_count FROM applicants</span>
+<span class="s2"> WHERE lower(trim(status)) = 'rejected'</span>
+<span class="s2"> AND lower(trim(llm_generated_university)) NOT IN ('', 'unknown', 'n/a')</span>
+<span class="s2"> GROUP BY lower(trim(llm_generated_university))</span>
+<span class="s2"> ORDER BY rejection_count DESC, university ASC LIMIT 5"""</span>
+<span class="p">}</span>
+
+<div class="viewcode-block" id="run_queries">
+<a class="viewcode-back" href="../api.html#query_data.run_queries">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">run_queries</span><span class="p">(</span><span class="n">connection</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">run</span><span class="p">(</span><span class="n">conn</span><span class="p">):</span>
+        <span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span> <span class="k">as</span> <span class="n">cursor</span><span class="p">:</span>
+            <span class="n">results</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="k">for</span> <span class="n">number</span><span class="p">,</span> <span class="n">sql</span> <span class="ow">in</span> <span class="n">QUERIES</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="n">cursor</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">sql</span><span class="p">)</span>
+                <span class="n">results</span><span class="p">[</span><span class="n">number</span><span class="p">]</span> <span class="o">=</span> <span class="n">cursor</span><span class="o">.</span><span class="n">fetchall</span><span class="p">()</span>
+            <span class="k">return</span> <span class="n">results</span>
+    <span class="k">if</span> <span class="n">connection</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">run</span><span class="p">(</span><span class="n">connection</span><span class="p">)</span>
+    <span class="k">with</span> <span class="n">connect</span><span class="p">()</span> <span class="k">as</span> <span class="n">conn</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">run</span><span class="p">(</span><span class="n">conn</span><span class="p">)</span></div>
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">'__main__'</span><span class="p">:</span>
+    <span class="n">print_results</span><span class="p">(</span><span class="n">run_queries</span><span class="p">())</span>
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">Grad Cafe Analytics</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../setup.html">Overview and setup</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../architecture.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api.html">API reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../testing.html">Testing guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../operations.html">Operational notes and troubleshooting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../publishing.html">Building and publishing documentation</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  <li><a href="index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 9.1.0</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

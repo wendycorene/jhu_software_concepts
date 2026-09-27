@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>load_data &#8212; Grad Cafe Analytics  documentation</title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="../_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="../_static/alabaster.css?v=27fed22d" />
+    <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+    <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for load_data</h1><div class="highlight"><pre>
+<span></span><span class="sd">"""Load the local Module 2 JSON into PostgreSQL; repeat loads are safe."""</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">argparse</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">date</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">math</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">re</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">config</span><span class="w"> </span><span class="kn">import</span> <span class="n">connect</span>
+
+<span class="c1"># Keep this column order consistent with the tuple returned by normalize().</span>
+<span class="n">COLUMNS</span> <span class="o">=</span> <span class="p">(</span><span class="s1">'p_id'</span><span class="p">,</span> <span class="s1">'program'</span><span class="p">,</span> <span class="s1">'comments'</span><span class="p">,</span> <span class="s1">'date_added'</span><span class="p">,</span> <span class="s1">'url'</span><span class="p">,</span> <span class="s1">'status'</span><span class="p">,</span> <span class="s1">'term'</span><span class="p">,</span>
+           <span class="s1">'us_or_international'</span><span class="p">,</span> <span class="s1">'gpa'</span><span class="p">,</span> <span class="s1">'gre'</span><span class="p">,</span> <span class="s1">'gre_v'</span><span class="p">,</span> <span class="s1">'gre_aw'</span><span class="p">,</span> <span class="s1">'degree'</span><span class="p">,</span>
+           <span class="s1">'llm_generated_program'</span><span class="p">,</span> <span class="s1">'llm_generated_university'</span><span class="p">)</span>
+<span class="c1"># Create the table only if it does not already exist. The primary key and</span>
+<span class="c1"># unique URL prevent the same source entry from being inserted twice.</span>
+<span class="n">SCHEMA</span> <span class="o">=</span> <span class="s1">'''CREATE TABLE IF NOT EXISTS applicants (</span>
+<span class="s1">    p_id INTEGER PRIMARY KEY, program TEXT, comments TEXT, date_added DATE,</span>
+<span class="s1">    url TEXT UNIQUE, status TEXT, term TEXT, us_or_international TEXT,</span>
+<span class="s1">    gpa DOUBLE PRECISION, gre DOUBLE PRECISION, gre_v DOUBLE PRECISION,</span>
+<span class="s1">    gre_aw DOUBLE PRECISION, degree TEXT,</span>
+<span class="s1">    llm_generated_program TEXT, llm_generated_university TEXT</span>
+<span class="s1">)'''</span>
+<span class="c1"># Each %s is a placeholder: psycopg supplies the values separately from SQL.</span>
+<span class="c1"># ON CONFLICT DO NOTHING skips entries with an existing ID or URL.</span>
+<span class="n">INSERT</span> <span class="o">=</span> <span class="p">(</span><span class="s1">'INSERT INTO applicants ('</span> <span class="o">+</span> <span class="s1">', '</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">COLUMNS</span><span class="p">)</span> <span class="o">+</span> <span class="s1">') VALUES ('</span>
+          <span class="o">+</span> <span class="s1">', '</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="s1">'</span><span class="si">%s</span><span class="s1">'</span><span class="p">]</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">COLUMNS</span><span class="p">))</span> <span class="o">+</span> <span class="s1">') ON CONFLICT DO NOTHING'</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="text">
+<a class="viewcode-back" href="../api.html#load_data.text">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">text</span><span class="p">(</span><span class="n">value</span><span class="p">):</span>
+    <span class="c1"># Trim whitespace and convert missing-value markers to Python None.</span>
+    <span class="c1"># psycopg stores None as SQL NULL (a missing database value).</span>
+    <span class="k">if</span> <span class="n">value</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="n">value</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">value</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+    <span class="k">return</span> <span class="kc">None</span> <span class="k">if</span> <span class="n">value</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="ow">in</span> <span class="p">(</span><span class="s1">''</span><span class="p">,</span> <span class="s1">'none'</span><span class="p">,</span> <span class="s1">'null'</span><span class="p">,</span> <span class="s1">'n/a'</span><span class="p">,</span> <span class="s1">'unknown'</span><span class="p">,</span> <span class="s1">'0'</span><span class="p">)</span> <span class="k">else</span> <span class="n">value</span></div>
+
+
+
+<div class="viewcode-block" id="number">
+<a class="viewcode-back" href="../api.html#load_data.number">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">number</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">minimum</span><span class="p">,</span> <span class="n">maximum</span><span class="p">):</span>
+    <span class="c1"># Convert numeric strings to floats; reject invalid values, infinity,</span>
+    <span class="c1"># NaN (not a number), and scores outside the chosen metric's range.</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">result</span> <span class="k">if</span> <span class="n">math</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">result</span><span class="p">)</span> <span class="ow">and</span> <span class="n">minimum</span> <span class="o">&lt;=</span> <span class="n">result</span> <span class="o">&lt;=</span> <span class="n">maximum</span> <span class="k">else</span> <span class="kc">None</span>
+    <span class="k">except</span> <span class="p">(</span><span class="ne">TypeError</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">):</span>
+        <span class="k">return</span> <span class="kc">None</span></div>
+
+
+
+<div class="viewcode-block" id="normalize">
+<a class="viewcode-back" href="../api.html#load_data.normalize">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">normalize</span><span class="p">(</span><span class="n">record</span><span class="p">):</span>
+    <span class="c1"># Extract the numeric source ID from a URL ending in /result/12345.</span>
+    <span class="c1"># record.get() returns None when an optional JSON field is absent.</span>
+    <span class="n">url</span> <span class="o">=</span> <span class="n">text</span><span class="p">(</span><span class="n">record</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">'URL'</span><span class="p">))</span>
+    <span class="n">match</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="sa">r</span><span class="s1">'/result/(\d+)/?$'</span><span class="p">,</span> <span class="n">url</span> <span class="ow">or</span> <span class="s1">''</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">match</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">'Record has no usable Grad Cafe result ID'</span><span class="p">)</span>
+    <span class="c1"># Use the YYYY-MM-DD portion of the date, ignoring any time suffix.</span>
+    <span class="c1"># An invalid or missing date becomes NULL rather than rejecting the entry.</span>
+    <span class="n">added</span> <span class="o">=</span> <span class="n">text</span><span class="p">(</span><span class="n">record</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">'Date Added to Grad Cafe'</span><span class="p">))</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">added</span> <span class="o">=</span> <span class="n">date</span><span class="o">.</span><span class="n">fromisoformat</span><span class="p">(</span><span class="n">added</span><span class="p">[:</span><span class="mi">10</span><span class="p">])</span> <span class="k">if</span> <span class="n">added</span> <span class="k">else</span> <span class="kc">None</span>
+    <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+        <span class="n">added</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="c1"># The assignment stores university and department together in program.</span>
+    <span class="c1"># filter(None, ...) leaves out either component when it is missing.</span>
+    <span class="n">program</span> <span class="o">=</span> <span class="s1">', '</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">filter</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="p">(</span><span class="n">text</span><span class="p">(</span><span class="n">record</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">'University'</span><span class="p">)),</span> <span class="n">text</span><span class="p">(</span><span class="n">record</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">'Program'</span><span class="p">)))))</span>
+    <span class="c1"># Return values in COLUMNS order. Keep LLM fields separate from originals.</span>
+    <span class="c1"># These score ranges assume a 4-point GPA and current GRE component scales.</span>
+    <span class="c1"># Zero placeholders and incompatible scales are treated as missing; this</span>
+    <span class="c1"># policy can also exclude genuine zero scores (see README.md).</span>
+    <span class="k">return</span> <span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">match</span><span class="p">[</span><span class="mi">1</span><span class="p">]),</span> <span class="n">program</span> <span class="ow">or</span> <span class="kc">None</span><span class="p">,</span> <span class="n">text</span><span class="p">(</span><span class="n">record</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">'Comments'</span><span class="p">)),</span> <span class="n">added</span><span class="p">,</span> <span class="n">url</span><span class="p">,</span>
+            <span class="n">text</span><span class="p">(</span><span class="n">record</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">'Applicant Status'</span><span class="p">)),</span> <span class="n">text</span><span class="p">(</span><span class="n">record</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">'Term'</span><span class="p">)),</span>
+            <span class="n">text</span><span class="p">(</span><span class="n">record</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">'Region'</span><span class="p">)),</span> <span class="n">number</span><span class="p">(</span><span class="n">record</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">'GPA'</span><span class="p">),</span> <span class="mf">0.01</span><span class="p">,</span> <span class="mf">4.0</span><span class="p">),</span>
+            <span class="n">number</span><span class="p">(</span><span class="n">record</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">'GRE Quantitative Score'</span><span class="p">),</span> <span class="mi">130</span><span class="p">,</span> <span class="mi">170</span><span class="p">),</span> <span class="n">number</span><span class="p">(</span><span class="n">record</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">'GRE Verbal Score'</span><span class="p">),</span> <span class="mi">130</span><span class="p">,</span> <span class="mi">170</span><span class="p">),</span>
+            <span class="n">number</span><span class="p">(</span><span class="n">record</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">'GRE Writing Score'</span><span class="p">),</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">6.0</span><span class="p">),</span> <span class="n">text</span><span class="p">(</span><span class="n">record</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">'Degree'</span><span class="p">)),</span>
+            <span class="n">text</span><span class="p">(</span><span class="n">record</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">'llm-generated-program'</span><span class="p">)),</span> <span class="n">text</span><span class="p">(</span><span class="n">record</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">'llm-generated-university'</span><span class="p">)))</span></div>
+
+
+
+<div class="viewcode-block" id="load_records">
+<a class="viewcode-back" href="../api.html#load_data.load_records">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">load_records</span><span class="p">(</span><span class="n">records</span><span class="p">,</span> <span class="n">connection</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="c1"># Prepare usable entries and count malformed records without stopping</span>
+    <span class="c1"># the entire batch. Missing optional fields are handled by normalize().</span>
+    <span class="n">rows</span><span class="p">,</span> <span class="n">skipped</span> <span class="o">=</span> <span class="p">[],</span> <span class="mi">0</span>
+    <span class="k">for</span> <span class="n">record</span> <span class="ow">in</span> <span class="n">records</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">normalize</span><span class="p">(</span><span class="n">record</span><span class="p">))</span>
+        <span class="k">except</span> <span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="ne">TypeError</span><span class="p">,</span> <span class="ne">AttributeError</span><span class="p">):</span>
+            <span class="n">skipped</span> <span class="o">+=</span> <span class="mi">1</span>
+    <span class="c1"># A cursor sends SQL to PostgreSQL. executemany runs the same INSERT</span>
+    <span class="c1"># for each prepared row; rowcount counts the rows actually inserted.</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">insert</span><span class="p">(</span><span class="n">conn</span><span class="p">):</span>
+        <span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span> <span class="k">as</span> <span class="n">cursor</span><span class="p">:</span>
+            <span class="n">cursor</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">SCHEMA</span><span class="p">)</span>
+            <span class="n">cursor</span><span class="o">.</span><span class="n">executemany</span><span class="p">(</span><span class="n">INSERT</span><span class="p">,</span> <span class="n">rows</span><span class="p">)</span>
+            <span class="k">return</span> <span class="p">{</span><span class="s1">'inserted'</span><span class="p">:</span> <span class="n">cursor</span><span class="o">.</span><span class="n">rowcount</span><span class="p">,</span> <span class="s1">'duplicates'</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">rows</span><span class="p">)</span> <span class="o">-</span> <span class="n">cursor</span><span class="o">.</span><span class="n">rowcount</span><span class="p">,</span>
+                    <span class="s1">'skipped'</span><span class="p">:</span> <span class="n">skipped</span><span class="p">}</span>
+    <span class="c1"># A caller-supplied connection lets the caller control commit/rollback.</span>
+    <span class="k">if</span> <span class="n">connection</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">insert</span><span class="p">(</span><span class="n">connection</span><span class="p">)</span>
+    <span class="c1"># Otherwise, open our own connection using config.py settings.</span>
+    <span class="c1"># This context commits on success, rolls back on error, and closes it.</span>
+    <span class="k">with</span> <span class="n">connect</span><span class="p">()</span> <span class="k">as</span> <span class="n">conn</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">insert</span><span class="p">(</span><span class="n">conn</span><span class="p">)</span></div>
+
+
+
+<span class="c1"># Run this section only when launched directly, not when imported by Flask.</span>
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">'__main__'</span><span class="p">:</span>
+    <span class="c1"># argparse reads command-line arguments and supplies a --help option.</span>
+    <span class="n">parser</span> <span class="o">=</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">(</span><span class="n">description</span><span class="o">=</span><span class="vm">__doc__</span><span class="p">)</span>
+    <span class="c1"># Example: python load_data.py applicant_data.json</span>
+    <span class="c1"># nargs='?' makes the filename optional; type=Path creates a Path object.</span>
+    <span class="c1"># Without a filename, use the enriched JSON beside this script.</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">'file'</span><span class="p">,</span> <span class="n">nargs</span><span class="o">=</span><span class="s1">'?'</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="n">Path</span><span class="p">,</span>
+                        <span class="n">default</span><span class="o">=</span><span class="n">Path</span><span class="p">(</span><span class="vm">__file__</span><span class="p">)</span><span class="o">.</span><span class="n">parent</span> <span class="o">/</span> <span class="s1">'llm_extend_applicant_data.json'</span><span class="p">)</span>
+    <span class="c1"># Store the selected filename in args.file.</span>
+    <span class="n">args</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">()</span>
+    <span class="c1"># Read UTF-8 JSON (allowing a byte-order mark), convert it to Python</span>
+    <span class="c1"># records, load them, and print inserted/duplicate/skipped counts.</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">load_records</span><span class="p">(</span><span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">file</span><span class="o">.</span><span class="n">read_text</span><span class="p">(</span><span class="n">encoding</span><span class="o">=</span><span class="s1">'utf-8-sig'</span><span class="p">))))</span>
+
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">Grad Cafe Analytics</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../setup.html">Overview and setup</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../architecture.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api.html">API reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../testing.html">Testing guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../operations.html">Operational notes and troubleshooting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../publishing.html">Building and publishing documentation</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  <li><a href="index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 9.1.0</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>
