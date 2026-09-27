@@ -30,8 +30,10 @@ python src/app.py
 ```
 
 Open http://127.0.0.1:5000/analysis. The loader skips duplicate IDs or URLs.
-The current implementation reads `PG*` variables; the assignment's
-`DATABASE_URL` support is still pending.
+Alternatively, set `DATABASE_URL` to a PostgreSQL connection URL. It takes
+precedence over the `PG*` settings for both the loader and ORM queries. Use
+`postgresql://USER:PASSWORD@HOST:5432/DATABASE`, URL-encoding special characters
+in credentials. Set it before starting the app; do not commit credentials.
 
 ## Tests and coverage
 

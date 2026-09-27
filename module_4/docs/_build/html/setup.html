@@ -60,16 +60,20 @@ $dbCredential = Get-Credential -UserName postgres -Message 'PostgreSQL password'
 $env:PGPASSWORD = $dbCredential.GetNetworkCredential().Password
 </pre></div>
 </div>
-<p><code class="docutils literal notranslate"><span class="pre">config.py</span></code> currently reads these five <code class="docutils literal notranslate"><span class="pre">PG*</span></code> environment variables.
+<p><code class="docutils literal notranslate"><span class="pre">config.py</span></code> reads these five <code class="docutils literal notranslate"><span class="pre">PG*</span></code> environment variables when no
+<code class="docutils literal notranslate"><span class="pre">DATABASE_URL</span></code> is set.
 Defaults are localhost, port 5432, user postgres, and database
 gradcafe_module3. There is no default password. <code class="docutils literal notranslate"><span class="pre">PORT</span></code> controls the Flask
 port and defaults to 5000.</p>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p>The assignment also requires <code class="docutils literal notranslate"><span class="pre">DATABASE_URL</span></code> support. That is still a
-pending application change; setting that variable alone currently has no
-effect. The instructions here describe the working implementation.</p>
-</div>
+<p>Alternatively set <code class="docutils literal notranslate"><span class="pre">DATABASE_URL</span></code> to
+<code class="docutils literal notranslate"><span class="pre">postgresql://USER:PASSWORD&#64;HOST:5432/DATABASE</span></code> before starting the app.
+It takes precedence over the <code class="docutils literal notranslate"><span class="pre">PG*</span></code> variables for both psycopg and SQLAlchemy.
+URL-encode special characters in credentials. The <code class="docutils literal notranslate"><span class="pre">postgres</span></code> and
+<code class="docutils literal notranslate"><span class="pre">postgresql+psycopg</span></code> schemes are also accepted. Query options such as
+<code class="docutils literal notranslate"><span class="pre">?sslmode=require</span></code> are preserved. Never commit a real connection URL.</p>
+<p>The ORM engine is created when <code class="docutils literal notranslate"><span class="pre">models.py</span></code> is imported, so restart the app
+after changing connection settings. Tests can override the environment before
+constructing their isolated connection or engine.</p>
 </section>
 <section id="load-and-run">
 <h2>Load and run<a class="headerlink" href="#load-and-run" title="Link to this heading">¶</a></h2>

@@ -28,16 +28,22 @@ Configure the connection in the terminal that will run the application::
    $dbCredential = Get-Credential -UserName postgres -Message 'PostgreSQL password'
    $env:PGPASSWORD = $dbCredential.GetNetworkCredential().Password
 
-``config.py`` currently reads these five ``PG*`` environment variables.
+``config.py`` reads these five ``PG*`` environment variables when no
+``DATABASE_URL`` is set.
 Defaults are localhost, port 5432, user postgres, and database
 gradcafe_module3. There is no default password. ``PORT`` controls the Flask
 port and defaults to 5000.
 
-.. note::
+Alternatively set ``DATABASE_URL`` to
+``postgresql://USER:PASSWORD@HOST:5432/DATABASE`` before starting the app.
+It takes precedence over the ``PG*`` variables for both psycopg and SQLAlchemy.
+URL-encode special characters in credentials. The ``postgres`` and
+``postgresql+psycopg`` schemes are also accepted. Query options such as
+``?sslmode=require`` are preserved. Never commit a real connection URL.
 
-   The assignment also requires ``DATABASE_URL`` support. That is still a
-   pending application change; setting that variable alone currently has no
-   effect. The instructions here describe the working implementation.
+The ORM engine is created when ``models.py`` is imported, so restart the app
+after changing connection settings. Tests can override the environment before
+constructing their isolated connection or engine.
 
 Load and run
 ------------

@@ -34,7 +34,17 @@
 <span></span><span class="sd">"""Shared environment-based PostgreSQL configuration."""</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">psycopg</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">sqlalchemy</span><span class="w"> </span><span class="kn">import</span> <span class="n">URL</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">sqlalchemy</span><span class="w"> </span><span class="kn">import</span> <span class="n">URL</span><span class="p">,</span> <span class="n">make_url</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_database_url</span><span class="p">():</span>
+    <span class="n">value</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s1">'DATABASE_URL'</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">value</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="n">url</span> <span class="o">=</span> <span class="n">make_url</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">url</span><span class="o">.</span><span class="n">drivername</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="s1">'postgres'</span><span class="p">,</span> <span class="s1">'postgresql'</span><span class="p">,</span> <span class="s1">'postgresql+psycopg'</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">'DATABASE_URL must specify PostgreSQL'</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">url</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="n">drivername</span><span class="o">=</span><span class="s1">'postgresql+psycopg'</span><span class="p">)</span>
 
 
 <div class="viewcode-block" id="connection_parameters">
@@ -51,6 +61,9 @@
 <div class="viewcode-block" id="connect">
 <a class="viewcode-back" href="../api.html#config.connect">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">connect</span><span class="p">():</span>
+    <span class="n">url</span> <span class="o">=</span> <span class="n">_database_url</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">url</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">psycopg</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">url</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="n">drivername</span><span class="o">=</span><span class="s1">'postgresql'</span><span class="p">)</span><span class="o">.</span><span class="n">render_as_string</span><span class="p">(</span><span class="n">hide_password</span><span class="o">=</span><span class="kc">False</span><span class="p">))</span>
     <span class="k">return</span> <span class="n">psycopg</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="o">**</span><span class="n">connection_parameters</span><span class="p">())</span></div>
 
 
@@ -58,6 +71,9 @@
 <div class="viewcode-block" id="sqlalchemy_url">
 <a class="viewcode-back" href="../api.html#config.sqlalchemy_url">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">sqlalchemy_url</span><span class="p">():</span>
+    <span class="n">url</span> <span class="o">=</span> <span class="n">_database_url</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">url</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">url</span>
     <span class="n">p</span> <span class="o">=</span> <span class="n">connection_parameters</span><span class="p">()</span>
     <span class="k">return</span> <span class="n">URL</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="s1">'postgresql+psycopg'</span><span class="p">,</span> <span class="n">username</span><span class="o">=</span><span class="n">p</span><span class="p">[</span><span class="s1">'user'</span><span class="p">],</span> <span class="n">password</span><span class="o">=</span><span class="n">p</span><span class="p">[</span><span class="s1">'password'</span><span class="p">],</span>
                       <span class="n">host</span><span class="o">=</span><span class="n">p</span><span class="p">[</span><span class="s1">'host'</span><span class="p">],</span> <span class="n">port</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span><span class="n">p</span><span class="p">[</span><span class="s1">'port'</span><span class="p">]),</span> <span class="n">database</span><span class="o">=</span><span class="n">p</span><span class="p">[</span><span class="s1">'dbname'</span><span class="p">])</span></div>

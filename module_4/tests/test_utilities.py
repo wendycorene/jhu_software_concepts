@@ -15,6 +15,7 @@ SOURCE = Path(__file__).resolve().parents[1] / 'src'
 
 
 def test_connection_uses_environment(monkeypatch):
+    monkeypatch.delenv('DATABASE_URL', raising=False)
     monkeypatch.setenv('PGDATABASE', 'test_database')
     monkeypatch.setenv('PGUSER', 'test_user')
     monkeypatch.setenv('PGPASSWORD', 'test-only-placeholder')
