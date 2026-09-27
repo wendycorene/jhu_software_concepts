@@ -1,5 +1,6 @@
 ﻿// Poll only progress; analysis changes when the user selects Update Analysis.
 const pullButton = document.querySelector('#pull-button');
+const updateButton = document.querySelector('[data-testid="update-analysis-btn"]');
 const notice = document.querySelector('#pull-notice');
 const message = document.querySelector('#pull-message');
 const spinner = document.querySelector('#spinner');
@@ -8,6 +9,7 @@ if (time) time.textContent = new Date(time.dateTime).toLocaleString();
 let starting = false;
 function display(status) {
     pullButton.disabled = status.running;
+    updateButton.disabled = status.running;
     spinner.hidden = !status.running;
     notice.dataset.state = status.state;
     message.textContent = status.message;

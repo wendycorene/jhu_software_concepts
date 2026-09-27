@@ -3,7 +3,7 @@ import logging
 import os
 import threading
 from datetime import datetime, timezone
-from flask import Flask, redirect, render_template, url_for, jsonify
+from flask import Flask, render_template, jsonify
 from sqlalchemy import select, func
 from models import Applicant, Session
 from orm_queries import run_queries
@@ -34,7 +34,7 @@ class PullManager:
         if not self.lock.acquire(blocking=False):
             return False
         self.state = 'running'
-        self.message = 'New data is currently being retrieved. You can still refresh the analysis.'
+        self.message = 'New data is currently being retrieved. Please wait before updating the analysis.'
         thread = threading.Thread(target=self._run, daemon=True)
         try:
             thread.start()
@@ -107,12 +107,15 @@ def create_app(manager=None):
 
     @app.post('/pull-data')
     def pull_data():
-        manager.start()
-        return redirect(url_for('index'), code=303)
+        if manager.running() or not manager.start():
+            return jsonify(busy=True), 409
+        return jsonify(ok=True), 202
 
     @app.post('/update-analysis')
     def update_analysis():
-        return redirect(url_for('index'), code=303)
+        if manager.running():
+            return jsonify(busy=True), 409
+        return index()
 
     return app
 
