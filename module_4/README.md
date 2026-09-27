@@ -58,4 +58,4 @@ Open [the generated documentation](docs/_build/html/index.html).
 It covers setup, architecture, API reference, testing, and operational notes.
 See [publishing instructions](docs/publishing.rst) for Read the Docs.
 
-**Published documentation URL:** pending the first successful Read the Docs build.
+**Published documentation:** [Grad Cafe Analytics on Read the Docs](https://wendy-eloe-grad-cafe-analytics.readthedocs.io/en/latest/).
